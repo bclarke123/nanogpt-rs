@@ -2837,6 +2837,8 @@ dependencies = [
  "burn",
  "rand 0.9.1",
  "reqwest",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
