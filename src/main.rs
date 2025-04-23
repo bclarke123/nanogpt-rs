@@ -28,36 +28,6 @@ const OUTPUT_DIR: &str = "output";
 type NGBackend = Wgpu;
 type NGAutodiffBackend = Autodiff<NGBackend>;
 
-fn get_batch<B, const D: usize, K>(
-    data: &[u32],
-    block_size: usize,
-    batch_size: usize,
-) -> (Tensor<B, D, K>, Tensor<B, D, K>)
-where
-    B: Backend,
-    K: TensorKind<B> + BasicOps<B>,
-{
-    let idx = rand::random_range(0..data.len() - block_size);
-
-    let x = Tensor::stack::<D>(
-        (0..batch_size)
-            .map(|_| Tensor::<B, 1, K>::from(TensorData::from(&data[idx..idx + block_size])))
-            .collect::<Vec<_>>(),
-        0,
-    );
-
-    let y = Tensor::stack::<D>(
-        (0..batch_size)
-            .map(|_| {
-                Tensor::<B, 1, K>::from(TensorData::from(&data[idx + 1..idx + block_size + 1]))
-            })
-            .collect::<Vec<_>>(),
-        0,
-    );
-
-    (x, y)
-}
-
 #[derive(Config)]
 pub struct TrainingConfig {
     pub model: BigramModelConfig,
@@ -152,43 +122,6 @@ async fn main() -> Result<()> {
     config.save(format!("{}/config.json", OUTPUT_DIR))?;
 
     train::<NGAutodiffBackend>(config, device, training_data, valid_data, &vocab)?;
-
-    // let chars = unique_chars(&dataset);
-
-    // println!("Unique characters: {}", String::from_iter(chars.iter()));
-
-    // let encoded = encode("hii there", &chars);
-    // println!("Encoded: {:?}", encoded);
-
-    // let decoded = decode(&encoded, &chars);
-    // println!("Decoded: {}", decoded);
-
-    // let encoded = encode(&dataset, &chars);
-    // let len = encoded.len() * 9 / 10;
-
-    // let train_data = &encoded[..len];
-    // let val_data = &encoded[len + 1..];
-
-    // println!(
-    //     "Using {len} bytes to train, {} to validate",
-    //     encoded.len() - len
-    // );
-
-    // let batch_size = 4;
-    // let block_size = 8;
-
-    // let (xb, yb) = get_batch::<Wgpu, 2, Int>(train_data, block_size, batch_size);
-
-    // println!("inputs: {:?} / {:?}", xb.shape(), xb.to_string());
-    // println!("targets: {:?} / {:?}", yb.shape(), yb.to_string());
-
-    // println!("{:?}", &encoded[..=block_size]);
-
-    // let device = Default::default();
-    // let tensor_data = TensorData::new(encoded[..len].to_vec(), [len; 1]);
-
-    // let tensor: Tensor<Backend, 1, Int> =
-    //     Tensor::<Backend, 1, Int>::from_data(tensor_data, &device);
 
     Ok(())
 }
