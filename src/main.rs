@@ -8,11 +8,11 @@ use burn::{
     optim::AdamWConfig,
     prelude::*,
     record::CompactRecorder,
-    tensor::{BasicOps, Tensor, TensorData, TensorKind, backend::AutodiffBackend},
+    tensor::backend::AutodiffBackend,
     train::{
         ClassificationOutput, LearnerBuilder, MetricEarlyStoppingStrategy, StoppingCondition,
         metric::{
-            AccuracyMetric, CpuMemory, CpuUse, LossMetric,
+            AccuracyMetric, LossMetric,
             store::{Aggregate, Direction, Split},
         },
     },
@@ -53,12 +53,12 @@ fn train<B: AutodiffBackend>(
 ) -> Result<()> {
     B::seed(1337);
 
-    let trainer = BigramBatcher::<B> {
-        device: device.clone(),
+    let trainer = BigramBatcher {
+        // device: device.clone(),
     };
 
-    let validator = BigramBatcher::<B::InnerBackend> {
-        device: device.clone(),
+    let validator = BigramBatcher {
+        // device: device.clone(),
     };
 
     let trainer_loader = DataLoaderBuilder::new(trainer)

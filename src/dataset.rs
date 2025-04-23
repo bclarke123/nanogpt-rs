@@ -14,20 +14,20 @@ fn stoi(c: char, vocab: &Vec<char>) -> u32 {
         .unwrap_or_else(|| panic!("Character {} not found in vocabulary", c)) as u32
 }
 
-fn itos(index: u32, vocab: &Vec<char>) -> char {
-    vocab
-        .get(index as usize)
-        .copied()
-        .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
-}
+// fn itos(index: u32, vocab: &Vec<char>) -> char {
+//     vocab
+//         .get(index as usize)
+//         .copied()
+//         .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
+// }
 
 fn encode(s: &str, vocab: &Vec<char>) -> Vec<u32> {
     s.chars().map(|c| stoi(c, vocab)).collect::<Vec<_>>()
 }
 
-fn decode(indices: &[u32], vocab: &Vec<char>) -> String {
-    indices.iter().map(|&index| itos(index, vocab)).collect()
-}
+// fn decode(indices: &[u32], vocab: &Vec<char>) -> String {
+//     indices.iter().map(|&index| itos(index, vocab)).collect()
+// }
 
 #[derive(Clone, Debug)]
 pub struct TrainingItem {
