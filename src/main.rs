@@ -20,19 +20,21 @@ const OUTPUT_DIR: &str = "output";
 type NGBackend = Wgpu;
 type NGAutodiffBackend = Autodiff<NGBackend>;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let training_len = DATASET.len() * 9 / 10;
     let training_data = &DATASET[0..training_len];
     let valid_data = &DATASET[training_len + 1..];
     let vocab = unique_chars(DATASET);
 
     let device = WgpuDevice::DefaultDevice;
-    let config = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
+    let config_file = format!("{}/config.json", OUTPUT_DIR);
 
     fs::create_dir_all(OUTPUT_DIR)?;
 
-    config.save(format!("{}/config.json", OUTPUT_DIR))?;
+    let config = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
+    if let Err(_) = TrainingConfig::load(&config_file) {
+        config.save(&config_file)?;
+    }
 
     let args = env::args();
     let op = if args.len() > 1 {
