@@ -7,37 +7,61 @@ pub fn unique_chars(s: &str) -> Vec<char> {
     chars
 }
 
-fn stoi(c: char, vocab: &Vec<char>) -> u32 {
+fn stoi(c: char, vocab: &Vec<char>) -> i32 {
     vocab
         .iter()
         .position(|&v| v == c)
-        .unwrap_or_else(|| panic!("Character {} not found in vocabulary", c)) as u32
+        .unwrap_or_else(|| panic!("Character {} not found in vocabulary", c)) as i32
 }
 
-// fn itos(index: u32, vocab: &Vec<char>) -> char {
-//     vocab
-//         .get(index as usize)
-//         .copied()
-//         .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
-// }
+fn itos(index: i32, vocab: &Vec<char>) -> char {
+    vocab
+        .get(index as usize)
+        .copied()
+        .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
+}
 
-fn encode(s: &str, vocab: &Vec<char>) -> Vec<u32> {
+fn encode(s: &str, vocab: &Vec<char>) -> Vec<i32> {
     s.chars().map(|c| stoi(c, vocab)).collect::<Vec<_>>()
 }
 
-// fn decode(indices: &[u32], vocab: &Vec<char>) -> String {
-//     indices.iter().map(|&index| itos(index, vocab)).collect()
-// }
+pub fn decode(indices: &[i32], vocab: &Vec<char>) -> String {
+    indices.iter().map(|&index| itos(index, vocab)).collect()
+}
+
+pub fn sample_distribution(distribution: &[f32]) -> usize {
+    let mut cdf = Vec::with_capacity(distribution.len());
+    let mut sum = 0.0;
+    for &prob in distribution.iter() {
+        sum += prob;
+        cdf.push(sum);
+    }
+
+    // Normalize the CDF if necessary
+    let cdf_last = *cdf.last().unwrap();
+    if cdf_last != 1.0 {
+        for cdf_val in cdf.iter_mut() {
+            *cdf_val /= cdf_last;
+        }
+    }
+
+    let random_value = rand::random_range(0f32..1f32);
+
+    // Step 4: Find the index in the CDF
+    cdf.iter()
+        .position(|&x| x >= random_value)
+        .unwrap_or_else(|| cdf.len() - 1)
+}
 
 #[derive(Clone, Debug)]
 pub struct TrainingItem {
-    pub context: Vec<u32>,
-    pub target: Vec<u32>,
+    pub context: Vec<i32>,
+    pub target: Vec<i32>,
 }
 
 pub struct TrainingDataset {
     pub block_size: usize,
-    pub content: Vec<u32>,
+    pub content: Vec<i32>,
 }
 
 impl TrainingDataset {

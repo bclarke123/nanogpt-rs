@@ -1,14 +1,14 @@
 use std::fs;
 
 use anyhow::Result;
-use bigram::{BigramBatcher, BigramModelConfig};
+use bigram::{BigramBatcher, BigramModel, BigramModelConfig, BigramModelRecord};
 use burn::{
     backend::{Autodiff, Wgpu, wgpu::WgpuDevice},
     data::dataloader::DataLoaderBuilder,
     optim::AdamWConfig,
     prelude::*,
-    record::CompactRecorder,
-    tensor::backend::AutodiffBackend,
+    record::{CompactRecorder, FullPrecisionSettings, NamedMpkFileRecorder, Recorder},
+    tensor::{activation::softmax, backend::AutodiffBackend},
     train::{
         ClassificationOutput, LearnerBuilder, MetricEarlyStoppingStrategy, StoppingCondition,
         metric::{
@@ -17,7 +17,7 @@ use burn::{
         },
     },
 };
-use dataset::{TrainingDataset, unique_chars};
+use dataset::{TrainingDataset, decode, sample_distribution, unique_chars};
 
 mod bigram;
 mod dataset;
@@ -102,7 +102,42 @@ fn train<B: AutodiffBackend>(
     );
 
     let model = learner.fit(trainer_loader, validator_loader);
-    model.save_file(format!("{}/model", OUTPUT_DIR), &CompactRecorder::new())?;
+    model.save_file(
+        format!("{}/model", OUTPUT_DIR),
+        &NamedMpkFileRecorder::<FullPrecisionSettings>::new(),
+    )?;
+
+    Ok(())
+}
+
+fn generate<B: Backend>(device: B::Device, vocab: &Vec<char>, max_new_token: usize) -> Result<()> {
+    let config = TrainingConfig::load(format!("{}/config.json", OUTPUT_DIR))?;
+
+    let record: BigramModelRecord<B> = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+        .load(format!("{}/model", OUTPUT_DIR).into(), &device)?;
+
+    let model: BigramModel<B> = config.model.init(&device).load_record(record);
+
+    let start = vec![rand::random_range(0..vocab.len()) as i32];
+    let mut input = Tensor::<B, 1, Int>::from_data(TensorData::from(start.as_slice()), &device);
+
+    for _ in 0..max_new_token {
+        let [input_dim] = input.dims();
+        let logits = model.forward(input.clone().reshape([1, input_dim]));
+        let [b, t, c] = logits.dims();
+        let probs: Tensor<B, 2> = softmax(logits.slice([0..b, t - 1..t, 0..c]).squeeze(1), 1);
+        let data = probs.to_data();
+        let prob_elems = data.as_slice::<f32>().unwrap();
+        let elem_next = sample_distribution(prob_elems);
+        let input_next =
+            Tensor::<B, 1, Int>::from(TensorData::from([elem_next as i32])).to_device(&device);
+        input = Tensor::cat(vec![input, input_next], 0);
+    }
+
+    let data = input.to_data();
+    let output = data.as_slice().unwrap();
+
+    println!("{}", decode(output, vocab));
 
     Ok(())
 }
@@ -121,7 +156,9 @@ async fn main() -> Result<()> {
 
     config.save(format!("{}/config.json", OUTPUT_DIR))?;
 
-    train::<NGAutodiffBackend>(config, device, training_data, valid_data, &vocab)?;
+    // train::<NGAutodiffBackend>(config, device, training_data, valid_data, &vocab)?;
+
+    generate::<NGAutodiffBackend>(device, &vocab, 500)?;
 
     Ok(())
 }
