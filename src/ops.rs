@@ -42,13 +42,8 @@ pub fn train<B: AutodiffBackend>(
 ) -> Result<()> {
     B::seed(config.seed);
 
-    let trainer = BigramBatcher {
-        // device: device.clone(),
-    };
-
-    let validator = BigramBatcher {
-        // device: device.clone(),
-    };
+    let trainer = BigramBatcher {};
+    let validator = BigramBatcher {};
 
     let trainer_loader = DataLoaderBuilder::new(trainer)
         .batch_size(config.batch_size)
