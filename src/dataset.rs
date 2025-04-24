@@ -21,7 +21,7 @@ fn itos(index: i32, vocab: &Vec<char>) -> char {
         .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
 }
 
-fn encode(s: &str, vocab: &Vec<char>) -> Vec<i32> {
+pub fn encode(s: &str, vocab: &Vec<char>) -> Vec<i32> {
     s.chars().map(|c| stoi(c, vocab)).collect::<Vec<_>>()
 }
 

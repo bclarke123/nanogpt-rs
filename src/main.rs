@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 
 use anyhow::Result;
 use bigram::{BigramBatcher, BigramModel, BigramModelConfig, BigramModelRecord};
@@ -17,7 +17,7 @@ use burn::{
         },
     },
 };
-use dataset::{TrainingDataset, decode, sample_distribution, unique_chars};
+use dataset::{TrainingDataset, decode, encode, sample_distribution, unique_chars};
 
 mod bigram;
 mod dataset;
@@ -118,7 +118,7 @@ fn generate<B: Backend>(device: B::Device, vocab: &Vec<char>, max_new_token: usi
 
     let model: BigramModel<B> = config.model.init(&device).load_record(record);
 
-    let start = vec![rand::random_range(0..vocab.len()) as i32];
+    let start = encode(" ", vocab);
     let mut input = Tensor::<B, 1, Int>::from_data(TensorData::from(start.as_slice()), &device);
 
     for _ in 0..max_new_token {
@@ -156,9 +156,18 @@ async fn main() -> Result<()> {
 
     config.save(format!("{}/config.json", OUTPUT_DIR))?;
 
-    // train::<NGAutodiffBackend>(config, device, training_data, valid_data, &vocab)?;
+    let args = env::args();
+    let op = if args.len() > 1 {
+        args.collect::<Vec<_>>()[1].clone()
+    } else {
+        "generate".to_string()
+    };
 
-    generate::<NGAutodiffBackend>(device, &vocab, 500)?;
+    if "train" == op {
+        train::<NGAutodiffBackend>(config, device, training_data, valid_data, &vocab)?;
+    } else {
+        generate::<NGAutodiffBackend>(device, &vocab, 500)?;
+    }
 
     Ok(())
 }
