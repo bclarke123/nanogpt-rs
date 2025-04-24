@@ -62,13 +62,13 @@ impl<B: Backend> BigramModel<B> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BigramBatcher {}
-
-#[derive(Clone, Debug)]
 pub struct BigramBatch<B: Backend> {
     pub inputs: Tensor<B, 2, Int>,
     pub targets: Tensor<B, 2, Int>,
 }
+
+#[derive(Clone, Debug)]
+pub struct BigramBatcher {}
 
 impl<B: Backend> Batcher<TrainingItem, BigramBatch<B>> for BigramBatcher {
     fn batch(&self, items: Vec<TrainingItem>) -> BigramBatch<B> {
