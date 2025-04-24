@@ -1,5 +1,5 @@
 use crate::bigram::{BigramBatcher, BigramModel, BigramModelConfig, BigramModelRecord};
-use crate::dataset::{TrainingDataset, decode, encode, sample_distribution};
+use crate::dataset::{TrainingDataset, decode, sample_distribution};
 use anyhow::Result;
 use burn::{
     data::dataloader::DataLoaderBuilder,
@@ -107,7 +107,7 @@ pub fn generate<B: Backend>(
 
     let model: BigramModel<B> = config.model.init(&device).load_record(record);
 
-    let start = encode(" ", vocab);
+    let start = vec![0];
     let mut input = Tensor::<B, 1, Int>::from_data(TensorData::from(start.as_slice()), &device);
 
     for _ in 0..max_new_token {
