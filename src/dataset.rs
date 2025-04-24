@@ -7,25 +7,25 @@ pub fn unique_chars(s: &str) -> Vec<char> {
     chars
 }
 
-fn stoi(c: char, vocab: &Vec<char>) -> i32 {
+fn stoi(c: char, vocab: &[char]) -> i32 {
     vocab
         .iter()
         .position(|&v| v == c)
         .unwrap_or_else(|| panic!("Character {} not found in vocabulary", c)) as i32
 }
 
-fn itos(index: i32, vocab: &Vec<char>) -> char {
+fn itos(index: i32, vocab: &[char]) -> char {
     vocab
         .get(index as usize)
         .copied()
         .unwrap_or_else(|| panic!("Index {} out of bounds for vocabulary", index))
 }
 
-pub fn encode(s: &str, vocab: &Vec<char>) -> Vec<i32> {
+pub fn encode(s: &str, vocab: &[char]) -> Vec<i32> {
     s.chars().map(|c| stoi(c, vocab)).collect::<Vec<_>>()
 }
 
-pub fn decode(indices: &[i32], vocab: &Vec<char>) -> String {
+pub fn decode(indices: &[i32], vocab: &[char]) -> String {
     indices.iter().map(|&index| itos(index, vocab)).collect()
 }
 
@@ -65,7 +65,7 @@ pub struct TrainingDataset {
 }
 
 impl TrainingDataset {
-    pub fn new(dataset: &str, vocab: &Vec<char>) -> Self {
+    pub fn new(dataset: &str, vocab: &[char]) -> Self {
         let content = encode(dataset, vocab);
 
         Self {

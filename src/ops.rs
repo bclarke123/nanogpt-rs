@@ -38,7 +38,7 @@ pub fn train<B: AutodiffBackend>(
     device: B::Device,
     train_data: &str,
     valid_data: &str,
-    vocab: &Vec<char>,
+    vocab: &[char],
 ) -> Result<()> {
     B::seed(config.seed);
 
@@ -102,7 +102,7 @@ pub fn train<B: AutodiffBackend>(
 pub fn generate<B: Backend>(
     output_dir: &str,
     device: B::Device,
-    vocab: &Vec<char>,
+    vocab: &[char],
     max_new_token: usize,
 ) -> Result<()> {
     let config = TrainingConfig::load(format!("{}/config.json", output_dir))?;
