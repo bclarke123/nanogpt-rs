@@ -3,7 +3,8 @@ use burn::{
     data::dataloader::batcher::Batcher,
     module::Module,
     nn::{
-        Embedding, EmbeddingConfig, Linear, LinearConfig,
+        Dropout, DropoutConfig, Embedding, EmbeddingConfig, LayerNorm, LayerNormConfig, Linear,
+        LinearConfig, Relu,
         attention::{
             MhaInput, MultiHeadAttention, MultiHeadAttentionConfig, generate_autoregressive_mask,
         },
@@ -14,6 +15,65 @@ use burn::{
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
+#[derive(Config)]
+pub struct BlockConfig {
+    d_model: usize,
+    n_heads: usize,
+    #[config(default = 0.1)]
+    dropout: f64,
+}
+
+impl BlockConfig {
+    pub fn init<B: Backend>(&self, n_blocks: usize, device: &B::Device) -> Vec<Block<B>> {
+        (0..n_blocks)
+            .map(|_| Block {
+                sa_head: MultiHeadAttentionConfig::new(self.d_model, self.n_heads).init(device),
+                ffwd_linear1: LinearConfig::new(self.d_model, self.d_model * 4).init(device),
+                ffwd_linear2: LinearConfig::new(self.d_model * 4, self.d_model).init(device),
+                ffwd_activation: Relu::new(),
+                ln1: LayerNormConfig::new(self.d_model).init(device),
+                ln2: LayerNormConfig::new(self.d_model).init(device),
+                attn_dropout: DropoutConfig::new(self.dropout).init(),
+                ffwd_dropout: DropoutConfig::new(self.dropout).init(),
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+#[derive(Module, Debug)]
+pub struct Block<B: Backend> {
+    sa_head: MultiHeadAttention<B>,
+    ffwd_linear1: Linear<B>,
+    ffwd_linear2: Linear<B>,
+    ffwd_activation: Relu,
+    ln1: LayerNorm<B>,
+    ln2: LayerNorm<B>,
+    attn_dropout: Dropout,
+    ffwd_dropout: Dropout,
+}
+
+impl<B: Backend> Block<B> {
+    pub fn forward(&self, x: Tensor<B, 3>) -> Tensor<B, 3> {
+        let [b, t, _c] = x.dims();
+        let device = x.device();
+
+        let x_norm1 = self.ln1.forward(x.clone());
+        let mask = generate_autoregressive_mask(b, t, &device);
+        let mha_input = MhaInput::self_attn(x_norm1).mask_attn(mask);
+        let mha_output = self.sa_head.forward(mha_input);
+        let mha_drop = self.attn_dropout.forward(mha_output.context);
+        let x = x + mha_drop;
+
+        let x_norm2 = self.ln2.forward(x.clone());
+        let x_ffwd1 = self.ffwd_linear1.forward(x_norm2);
+        let ffwd_act = self.ffwd_activation.forward(x_ffwd1);
+        let ffwd_output = self.ffwd_linear2.forward(ffwd_act);
+        let ffwd_drop = self.ffwd_dropout.forward(ffwd_output);
+
+        x + ffwd_drop
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TrainingItem {
     pub context: Vec<i32>,
@@ -22,14 +82,23 @@ pub struct TrainingItem {
 
 #[derive(Config)]
 pub struct BigramModelConfig {
-    #[config(default = 8)]
-    block_size: usize,
+    #[config(default = 256)]
+    pub block_size: usize,
 
     #[config(default = 65)]
     vocab_size: usize,
 
-    #[config(default = 32)]
+    #[config(default = 384)]
     d_model: usize,
+
+    #[config(default = 6)]
+    n_heads: usize,
+
+    #[config(default = 6)]
+    n_layers: usize,
+
+    #[config(default = 0.2)]
+    dropout: f64,
 }
 
 impl BigramModelConfig {
@@ -37,8 +106,10 @@ impl BigramModelConfig {
         BigramModel {
             embedding: EmbeddingConfig::new(self.vocab_size, self.d_model).init(device),
             position_embedding: EmbeddingConfig::new(self.block_size, self.d_model).init(device),
-            linear: LinearConfig::new(self.d_model, self.vocab_size).init(device),
-            sa_head: MultiHeadAttentionConfig::new(self.d_model, 4).init(device),
+            embedding_dropout: DropoutConfig::new(self.dropout).init(),
+            blocks: BlockConfig::new(self.d_model, self.n_heads).init(self.n_layers, device),
+            final_ln: LayerNormConfig::new(self.d_model).init(device),
+            lm_head: LinearConfig::new(self.d_model, self.vocab_size).init(device),
         }
     }
 }
@@ -47,30 +118,34 @@ impl BigramModelConfig {
 pub struct BigramModel<B: Backend> {
     embedding: Embedding<B>,
     position_embedding: Embedding<B>,
-    linear: Linear<B>,
-    sa_head: MultiHeadAttention<B>,
+    embedding_dropout: Dropout,
+    blocks: Vec<Block<B>>,
+    final_ln: LayerNorm<B>,
+    lm_head: Linear<B>,
 }
 
 impl<B: Backend> BigramModel<B> {
     pub fn forward(&self, input: Tensor<B, 2, Int>) -> Tensor<B, 3> {
-        let [b, t] = input.dims();
+        let [_b, t] = input.dims();
         let device = input.device();
 
         let tok_emb = self.embedding.forward(input);
 
         let pos_indices = Tensor::<B, 1, Int>::arange(0..t as i64, &device);
         let pos_indices = pos_indices.reshape([1, t]);
-
         let pos_emb = self.position_embedding.forward(pos_indices);
 
-        let x = tok_emb + pos_emb;
+        let mut x = tok_emb + pos_emb;
 
-        let mask = generate_autoregressive_mask(b, t, &device);
-        let mha_input = MhaInput::self_attn(x).mask_attn(mask);
-        let attn_output = self.sa_head.forward(mha_input);
-        let x = attn_output.context;
+        x = self.embedding_dropout.forward(x);
 
-        self.linear.forward(x)
+        for block in self.blocks.iter() {
+            x = block.forward(x);
+        }
+
+        x = self.final_ln.forward(x);
+
+        self.lm_head.forward(x)
     }
 
     pub fn forward_classification(

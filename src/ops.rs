@@ -1,5 +1,5 @@
 use crate::bigram::{BigramBatcher, BigramModel, BigramModelConfig, BigramModelRecord};
-use crate::dataset::{TrainingDataset, decode, sample_distribution};
+use crate::dataset::{TrainingDataset, decode, multinomial_distrib};
 use anyhow::Result;
 use burn::{
     data::dataloader::DataLoaderBuilder,
@@ -15,6 +15,7 @@ use burn::{
         },
     },
 };
+use rand::rng;
 
 #[derive(Config)]
 pub struct TrainingConfig {
@@ -26,9 +27,9 @@ pub struct TrainingConfig {
     pub batch_size: usize,
     #[config(default = 8)]
     pub num_workers: usize,
-    #[config(default = 42)]
+    #[config(default = 1337)]
     pub seed: u64,
-    #[config(default = 1.0e-3)]
+    #[config(default = 3.0e-4)]
     pub learning_rate: f64,
 }
 
@@ -100,6 +101,7 @@ pub fn generate<B: Backend>(
     vocab: &[char],
     max_new_token: usize,
 ) -> Result<()> {
+    let mut rand = rng();
     let config = TrainingConfig::load(format!("{}/config.json", output_dir))?;
 
     let record: BigramModelRecord<B> = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
@@ -110,17 +112,33 @@ pub fn generate<B: Backend>(
     let start = vec![0];
     let mut input = Tensor::<B, 1, Int>::from_data(TensorData::from(start.as_slice()), &device);
 
+    let block_size = config.model.block_size;
+
     for _ in 0..max_new_token {
         let [input_dim] = input.dims();
-        let logits = model.forward(input.clone().reshape([1, input_dim]));
+
+        let start_index = if input_dim > block_size {
+            input_dim - block_size
+        } else {
+            0
+        };
+
+        let context_input = input.clone().slice([start_index..input_dim]);
+        let [context_len] = context_input.dims();
+        let model_input = context_input.reshape([1, context_len]);
+
+        let logits = model.forward(model_input);
         let [b, t, c] = logits.dims();
         let probs: Tensor<B, 2> = softmax(logits.slice([0..b, t - 1..t, 0..c]).squeeze(1), 1);
         let data = probs.to_data();
-        let prob_elems = data.as_slice::<f32>().unwrap();
-        let elem_next = sample_distribution(prob_elems);
+        let prob_elems = data
+            .as_slice::<f32>()
+            .expect("Softmax did not return f32 data");
+
+        let elem_next = multinomial_distrib(prob_elems, &mut rand);
         let input_next =
             Tensor::<B, 1, Int>::from(TensorData::from([elem_next as i32])).to_device(&device);
-        input = Tensor::cat(vec![input, input_next], 0);
+        input = Tensor::cat(vec![input.clone(), input_next], 0);
     }
 
     let data = input.to_data();
