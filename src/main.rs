@@ -31,10 +31,14 @@ fn main() -> Result<()> {
 
     fs::create_dir_all(OUTPUT_DIR)?;
 
-    let config = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
-    if TrainingConfig::load(&config_file).is_err() {
-        config.save(&config_file)?;
-    }
+    let config = if let Ok(cfg) = TrainingConfig::load(&config_file) {
+        cfg
+    } else {
+        let cfg = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
+        cfg.save(&config_file)?;
+
+        cfg
+    };
 
     let args = env::args();
     let op = if args.len() > 1 {
@@ -53,7 +57,7 @@ fn main() -> Result<()> {
             &vocab,
         )?;
     } else {
-        generate::<NGAutodiffBackend>(OUTPUT_DIR, device, &vocab, 10000)?;
+        generate::<NGBackend>(OUTPUT_DIR, device, &vocab, 10000)?;
     }
 
     Ok(())

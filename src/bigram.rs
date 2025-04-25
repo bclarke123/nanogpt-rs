@@ -91,7 +91,7 @@ pub struct BigramModelConfig {
     #[config(default = 192)]
     d_model: usize,
 
-    #[config(default = 3)]
+    #[config(default = 4)]
     n_heads: usize,
 
     #[config(default = 4)]
