@@ -50,13 +50,21 @@ pub fn train<B: AutodiffBackend>(
         .batch_size(config.batch_size)
         .shuffle(config.seed)
         .num_workers(config.num_workers)
-        .build(TrainingDataset::new(train_data, vocab));
+        .build(TrainingDataset::new(
+            train_data,
+            config.model.block_size,
+            vocab,
+        ));
 
     let validator_loader = DataLoaderBuilder::new(validator)
         .batch_size(config.batch_size)
         .shuffle(config.seed)
         .num_workers(config.num_workers)
-        .build(TrainingDataset::new(valid_data, vocab));
+        .build(TrainingDataset::new(
+            valid_data,
+            config.model.block_size,
+            vocab,
+        ));
 
     let learner = LearnerBuilder::<
         B,

@@ -22,7 +22,7 @@ type NGAutodiffBackend = Autodiff<NGBackend>;
 
 fn main() -> Result<()> {
     let training_len = DATASET.len() * 9 / 10;
-    let training_data = &DATASET[0..training_len];
+    let training_data = &DATASET[..training_len];
     let valid_data = &DATASET[training_len + 1..];
     let vocab = unique_chars(DATASET);
 

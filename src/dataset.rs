@@ -46,11 +46,11 @@ pub struct TrainingDataset {
 }
 
 impl TrainingDataset {
-    pub fn new(dataset: &str, vocab: &[char]) -> Self {
+    pub fn new(dataset: &str, block_size: usize, vocab: &[char]) -> Self {
         let content = encode(dataset, vocab);
 
         Self {
-            block_size: 8,
+            block_size,
             content,
         }
     }
