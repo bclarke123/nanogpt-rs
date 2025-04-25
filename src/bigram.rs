@@ -82,19 +82,19 @@ pub struct TrainingItem {
 
 #[derive(Config)]
 pub struct BigramModelConfig {
-    #[config(default = 256)]
+    #[config(default = 128)]
     pub block_size: usize,
 
     #[config(default = 65)]
     vocab_size: usize,
 
-    #[config(default = 384)]
+    #[config(default = 192)]
     d_model: usize,
 
-    #[config(default = 6)]
+    #[config(default = 3)]
     n_heads: usize,
 
-    #[config(default = 6)]
+    #[config(default = 4)]
     n_layers: usize,
 
     #[config(default = 0.2)]
