@@ -1,5 +1,7 @@
+use std::io::{self, Write};
+
 use crate::bigram::{BigramBatcher, BigramModel, BigramModelConfig, BigramModelRecord};
-use crate::dataset::{TrainingDataset, decode, multinomial_distrib};
+use crate::dataset::{TrainingDataset, itos, multinomial_distrib};
 use anyhow::Result;
 use burn::{
     data::dataloader::DataLoaderBuilder,
@@ -117,42 +119,42 @@ pub fn generate<B: Backend>(
 
     let model: BigramModel<B> = config.model.init(&device).load_record(record);
 
-    let start = vec![0];
-    let mut input = Tensor::<B, 1, Int>::from_data(TensorData::from(start.as_slice()), &device);
-
+    let mut generated_indices: Vec<i32> = vec![0];
     let block_size = config.model.block_size;
 
     for _ in 0..max_new_token {
-        let [input_dim] = input.dims();
+        let current_length = generated_indices.len();
 
-        let start_index = if input_dim > block_size {
-            input_dim - block_size
+        let start_index = if current_length > block_size {
+            current_length - block_size
         } else {
             0
         };
 
-        let context_input = input.clone().slice([start_index..input_dim]);
-        let [context_len] = context_input.dims();
-        let model_input = context_input.reshape([1, context_len]);
+        let context_slice = &generated_indices[start_index..];
+        let context_len = context_slice.len();
+        let context_tensor = Tensor::<B, 1, Int>::from_data(context_slice, &device);
+
+        let model_input = context_tensor.reshape([1, context_len]);
 
         let logits = model.forward(model_input);
         let [b, t, c] = logits.dims();
+
         let probs: Tensor<B, 2> = softmax(logits.slice([0..b, t - 1..t, 0..c]).squeeze(1), 1);
         let data = probs.to_data();
         let prob_elems = data
             .as_slice::<f32>()
             .expect("Softmax did not return f32 data");
 
-        let elem_next = multinomial_distrib(prob_elems, &mut rand);
-        let input_next =
-            Tensor::<B, 1, Int>::from(TensorData::from([elem_next as i32])).to_device(&device);
-        input = Tensor::cat(vec![input.clone(), input_next], 0);
+        let elem_next = multinomial_distrib(prob_elems, &mut rand) as i32;
+        let ch = itos(elem_next, &vocab);
+        print!("{}", ch);
+        io::stdout().flush()?;
+
+        generated_indices.push(elem_next);
     }
 
-    let data = input.to_data();
-    let output = data.as_slice().unwrap();
-
-    println!("{}", decode(output, vocab));
+    println!();
 
     Ok(())
 }

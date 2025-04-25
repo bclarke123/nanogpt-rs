@@ -13,14 +13,14 @@ pub fn unique_chars(s: &str) -> Vec<char> {
     chars
 }
 
-fn stoi(c: char, vocab: &[char]) -> i32 {
+pub fn stoi(c: char, vocab: &[char]) -> i32 {
     vocab
         .iter()
         .position(|&v| v == c)
         .unwrap_or_else(|| panic!("Character {} not found in vocabulary", c)) as i32
 }
 
-fn itos(index: i32, vocab: &[char]) -> char {
+pub fn itos(index: i32, vocab: &[char]) -> char {
     vocab
         .get(index as usize)
         .copied()
@@ -31,9 +31,9 @@ pub fn encode(s: &str, vocab: &[char]) -> Vec<i32> {
     s.chars().map(|c| stoi(c, vocab)).collect::<Vec<_>>()
 }
 
-pub fn decode(indices: &[i32], vocab: &[char]) -> String {
-    indices.iter().map(|&index| itos(index, vocab)).collect()
-}
+// pub fn decode(indices: &[i32], vocab: &[char]) -> String {
+//     indices.iter().map(|&index| itos(index, vocab)).collect()
+// }
 
 pub fn multinomial_distrib(input: &[f32], rng: &mut ThreadRng) -> usize {
     let dist = WeightedIndex::new(input).unwrap();

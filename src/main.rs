@@ -53,7 +53,7 @@ fn main() -> Result<()> {
             &vocab,
         )?;
     } else {
-        generate::<NGAutodiffBackend>(OUTPUT_DIR, device, &vocab, 500)?;
+        generate::<NGAutodiffBackend>(OUTPUT_DIR, device, &vocab, 10000)?;
     }
 
     Ok(())
