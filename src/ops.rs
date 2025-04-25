@@ -125,12 +125,7 @@ pub fn generate<B: Backend>(
     for _ in 0..max_new_token {
         let current_length = generated_indices.len();
 
-        let start_index = if current_length > block_size {
-            current_length - block_size
-        } else {
-            0
-        };
-
+        let start_index = current_length.saturating_sub(block_size);
         let context_slice = &generated_indices[start_index..];
         let context_len = context_slice.len();
         let context_tensor = Tensor::<B, 1, Int>::from_data(context_slice, &device);
@@ -147,7 +142,7 @@ pub fn generate<B: Backend>(
             .expect("Softmax did not return f32 data");
 
         let elem_next = multinomial_distrib(prob_elems, &mut rand) as i32;
-        let ch = itos(elem_next, &vocab);
+        let ch = itos(elem_next, vocab);
         print!("{}", ch);
         io::stdout().flush()?;
 

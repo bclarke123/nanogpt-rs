@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     fs::create_dir_all(OUTPUT_DIR)?;
 
     let config = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
-    if let Err(_) = TrainingConfig::load(&config_file) {
+    if TrainingConfig::load(&config_file).is_err() {
         config.save(&config_file)?;
     }
 

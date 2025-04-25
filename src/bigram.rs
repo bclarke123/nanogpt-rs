@@ -189,7 +189,7 @@ impl BigramBatcher {
         let tensors = items
             .iter()
             .map(op)
-            .map(|arr| Tensor::<B, 1, Int>::from(arr))
+            .map(Tensor::<B, 1, Int>::from)
             .collect::<Vec<_>>();
         Tensor::stack(tensors, 0)
     }
