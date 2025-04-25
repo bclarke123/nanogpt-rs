@@ -20,7 +20,7 @@ use burn::{
 pub struct TrainingConfig {
     pub model: BigramModelConfig,
     pub optimizer: AdamWConfig,
-    #[config(default = 4)]
+    #[config(default = 1)]
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,

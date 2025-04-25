@@ -1,5 +1,7 @@
 use burn::data::dataset::Dataset;
 
+use crate::bigram::TrainingItem;
+
 pub fn unique_chars(s: &str) -> Vec<char> {
     let mut chars = s.chars().collect::<Vec<_>>();
     chars.sort();
@@ -51,12 +53,6 @@ pub fn sample_distribution(distribution: &[f32]) -> usize {
     cdf.iter()
         .position(|&x| x >= random_value)
         .unwrap_or_else(|| cdf.len() - 1)
-}
-
-#[derive(Clone, Debug)]
-pub struct TrainingItem {
-    pub context: Vec<i32>,
-    pub target: Vec<i32>,
 }
 
 pub struct TrainingDataset {
