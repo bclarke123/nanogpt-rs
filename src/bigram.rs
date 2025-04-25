@@ -24,19 +24,17 @@ pub struct BlockConfig {
 }
 
 impl BlockConfig {
-    pub fn init<B: Backend>(&self, n_blocks: usize, device: &B::Device) -> Vec<Block<B>> {
-        (0..n_blocks)
-            .map(|_| Block {
-                sa_head: MultiHeadAttentionConfig::new(self.d_model, self.n_heads).init(device),
-                ffwd_linear1: LinearConfig::new(self.d_model, self.d_model * 4).init(device),
-                ffwd_linear2: LinearConfig::new(self.d_model * 4, self.d_model).init(device),
-                ffwd_activation: Relu::new(),
-                ln1: LayerNormConfig::new(self.d_model).init(device),
-                ln2: LayerNormConfig::new(self.d_model).init(device),
-                attn_dropout: DropoutConfig::new(self.dropout).init(),
-                ffwd_dropout: DropoutConfig::new(self.dropout).init(),
-            })
-            .collect::<Vec<_>>()
+    pub fn init<B: Backend>(&self, device: &B::Device) -> Block<B> {
+        Block {
+            sa_head: MultiHeadAttentionConfig::new(self.d_model, self.n_heads).init(device),
+            ffwd_linear1: LinearConfig::new(self.d_model, self.d_model * 4).init(device),
+            ffwd_linear2: LinearConfig::new(self.d_model * 4, self.d_model).init(device),
+            ffwd_activation: Relu::new(),
+            ln1: LayerNormConfig::new(self.d_model).init(device),
+            ln2: LayerNormConfig::new(self.d_model).init(device),
+            attn_dropout: DropoutConfig::new(self.dropout).init(),
+            ffwd_dropout: DropoutConfig::new(self.dropout).init(),
+        }
     }
 }
 
@@ -103,11 +101,12 @@ pub struct BigramModelConfig {
 
 impl BigramModelConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> BigramModel<B> {
+        let bc = BlockConfig::new(self.d_model, self.n_heads).with_dropout(self.dropout);
         BigramModel {
             embedding: EmbeddingConfig::new(self.vocab_size, self.d_model).init(device),
             position_embedding: EmbeddingConfig::new(self.block_size, self.d_model).init(device),
             embedding_dropout: DropoutConfig::new(self.dropout).init(),
-            blocks: BlockConfig::new(self.d_model, self.n_heads).init(self.n_layers, device),
+            blocks: (0..self.n_layers).map(|_| bc.init(device)).collect(),
             final_ln: LayerNormConfig::new(self.d_model).init(device),
             lm_head: LinearConfig::new(self.d_model, self.vocab_size).init(device),
         }
