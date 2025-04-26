@@ -119,16 +119,13 @@ pub fn generate<B: Backend>(
 
     let model: BigramModel<B> = config.model.init(&device).load_record(record);
 
-    let mut generated_indices: Vec<i32> = vec![0];
     let block_size = config.model.block_size;
+    let mut generated_indices: Vec<i32> = Vec::with_capacity(block_size + 1);
+    generated_indices.push(0);
 
     for _ in 0..max_new_token {
-        let current_length = generated_indices.len();
-
-        let start_index = current_length.saturating_sub(block_size);
-        let context_slice = &generated_indices[start_index..];
-        let context_len = context_slice.len();
-        let context_tensor = Tensor::<B, 1, Int>::from_data(context_slice, &device);
+        let context_len = generated_indices.len();
+        let context_tensor = Tensor::<B, 1, Int>::from_data(generated_indices.as_slice(), &device);
 
         let model_input = context_tensor.reshape([1, context_len]);
 
@@ -147,6 +144,9 @@ pub fn generate<B: Backend>(
         io::stdout().flush()?;
 
         generated_indices.push(elem_next);
+        if generated_indices.len() > block_size {
+            generated_indices.remove(0);
+        }
     }
 
     println!();
