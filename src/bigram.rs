@@ -171,6 +171,20 @@ impl<B: Backend> BigramModel<B> {
     }
 }
 
+impl<B: AutodiffBackend> TrainStep<BigramBatch<B>, ClassificationOutput<B>> for BigramModel<B> {
+    fn step(&self, item: BigramBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
+        let item = self.forward_classification(item.inputs, item.targets);
+
+        TrainOutput::new(self, item.loss.backward(), item)
+    }
+}
+
+impl<B: Backend> ValidStep<BigramBatch<B>, ClassificationOutput<B>> for BigramModel<B> {
+    fn step(&self, item: BigramBatch<B>) -> ClassificationOutput<B> {
+        self.forward_classification(item.inputs, item.targets)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BigramBatch<B: Backend> {
     pub inputs: Tensor<B, 2, Int>,
@@ -200,19 +214,5 @@ impl<B: Backend> Batcher<TrainingItem, BigramBatch<B>> for BigramBatcher {
         let targets = Self::stack::<B, _>(&items, |ti| ti.target.as_slice());
 
         BigramBatch { inputs, targets }
-    }
-}
-
-impl<B: AutodiffBackend> TrainStep<BigramBatch<B>, ClassificationOutput<B>> for BigramModel<B> {
-    fn step(&self, item: BigramBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
-        let item = self.forward_classification(item.inputs, item.targets);
-
-        TrainOutput::new(self, item.loss.backward(), item)
-    }
-}
-
-impl<B: Backend> ValidStep<BigramBatch<B>, ClassificationOutput<B>> for BigramModel<B> {
-    fn step(&self, item: BigramBatch<B>) -> ClassificationOutput<B> {
-        self.forward_classification(item.inputs, item.targets)
     }
 }
