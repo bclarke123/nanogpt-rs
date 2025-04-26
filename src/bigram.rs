@@ -3,8 +3,8 @@ use burn::{
     data::dataloader::batcher::Batcher,
     module::Module,
     nn::{
-        Dropout, DropoutConfig, Embedding, EmbeddingConfig, LayerNorm, LayerNormConfig, Linear,
-        LinearConfig, Relu,
+        Dropout, DropoutConfig, Embedding, EmbeddingConfig, Gelu, LayerNorm, LayerNormConfig,
+        Linear, LinearConfig,
         attention::{
             MhaInput, MultiHeadAttention, MultiHeadAttentionConfig, generate_autoregressive_mask,
         },
@@ -29,7 +29,7 @@ impl BlockConfig {
             sa_head: MultiHeadAttentionConfig::new(self.d_model, self.n_heads).init(device),
             ffwd_linear1: LinearConfig::new(self.d_model, self.d_model * 4).init(device),
             ffwd_linear2: LinearConfig::new(self.d_model * 4, self.d_model).init(device),
-            ffwd_activation: Relu::new(),
+            ffwd_activation: Gelu::new(),
             ln1: LayerNormConfig::new(self.d_model).init(device),
             ln2: LayerNormConfig::new(self.d_model).init(device),
             attn_dropout: DropoutConfig::new(self.dropout).init(),
@@ -43,7 +43,7 @@ pub struct Block<B: Backend> {
     sa_head: MultiHeadAttention<B>,
     ffwd_linear1: Linear<B>,
     ffwd_linear2: Linear<B>,
-    ffwd_activation: Relu,
+    ffwd_activation: Gelu,
     ln1: LayerNorm<B>,
     ln2: LayerNorm<B>,
     attn_dropout: Dropout,
