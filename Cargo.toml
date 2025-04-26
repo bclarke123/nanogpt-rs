@@ -3,6 +3,10 @@ name = "nanogpt"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+lto = true
+# codegen-units = 1
+
 [dependencies]
 anyhow = "1.0.98"
 burn = { version = "0.16.1", features = ["train", "wgpu"] }
