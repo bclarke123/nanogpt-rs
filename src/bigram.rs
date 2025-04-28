@@ -27,13 +27,16 @@ impl BlockConfig {
     pub fn init<B: Backend>(&self, device: &B::Device) -> Block<B> {
         Block {
             sa_head: MultiHeadAttentionConfig::new(self.d_model, self.n_heads).init(device),
+
+            // Feed forwards
             ffwd_linear1: LinearConfig::new(self.d_model, self.d_model * 4).init(device),
             ffwd_linear2: LinearConfig::new(self.d_model * 4, self.d_model).init(device),
             ffwd_activation: Gelu::new(),
+            ffwd_dropout: DropoutConfig::new(self.dropout).init(),
+
             ln1: LayerNormConfig::new(self.d_model).init(device),
             ln2: LayerNormConfig::new(self.d_model).init(device),
             attn_dropout: DropoutConfig::new(self.dropout).init(),
-            ffwd_dropout: DropoutConfig::new(self.dropout).init(),
         }
     }
 }

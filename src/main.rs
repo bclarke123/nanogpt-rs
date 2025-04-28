@@ -14,7 +14,8 @@ mod bigram;
 mod dataset;
 mod ops;
 
-const DATASET: &str = include_str!("tiny-shakespeare.txt");
+// const DATASET: &str = include_str!("tiny-shakespeare.txt");
+const DATASET: &str = include_str!("king-james-bible.txt");
 const OUTPUT_DIR: &str = "output";
 
 type NGBackend = Wgpu;
@@ -34,7 +35,11 @@ fn main() -> Result<()> {
     let config = if let Ok(cfg) = TrainingConfig::load(&config_file) {
         cfg
     } else {
-        let cfg = TrainingConfig::new(BigramModelConfig::new(), AdamWConfig::new());
+        let cfg = TrainingConfig::new(
+            BigramModelConfig::new().with_vocab_size(vocab.len()),
+            AdamWConfig::new(),
+        );
+
         cfg.save(&config_file)?;
 
         cfg
