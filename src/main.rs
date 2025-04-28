@@ -14,8 +14,7 @@ mod bigram;
 mod dataset;
 mod ops;
 
-// const DATASET: &str = include_str!("tiny-shakespeare.txt");
-const DATASET: &str = include_str!("king-james-bible.txt");
+const DATASET: &str = include_str!("data/tiny-shakespeare.txt");
 const OUTPUT_DIR: &str = "output";
 
 type NGBackend = Wgpu;
