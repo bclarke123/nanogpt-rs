@@ -211,8 +211,8 @@ impl BigramBatcher {
     }
 }
 
-impl<B: Backend> Batcher<TrainingItem, BigramBatch<B>> for BigramBatcher {
-    fn batch(&self, items: Vec<TrainingItem>) -> BigramBatch<B> {
+impl<B: Backend> Batcher<B, TrainingItem, BigramBatch<B>> for BigramBatcher {
+    fn batch(&self, items: Vec<TrainingItem>, _device: &B::Device) -> BigramBatch<B> {
         let inputs = Self::stack::<B, _>(&items, |ti| ti.context.as_slice());
         let targets = Self::stack::<B, _>(&items, |ti| ti.target.as_slice());
 
